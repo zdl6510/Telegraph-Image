@@ -1,14 +1,18 @@
 function makeInline(response) {
-    // 创建一个新的响应副本，这允许我们修改 header
     const newHeaders = new Headers(response.headers);
     
-    // 强制清除并覆盖 Content-Disposition
+    // 1. 强制清理下载头
     newHeaders.delete("Content-Disposition");
-    newHeaders.set("Content-Disposition", "inline; filename=image");
+    // 2. 设置预览头
+    newHeaders.set("Content-Disposition", "inline");
     
-    // 如果是视频，确保 Content-Type 正确，这有助于浏览器识别为流媒体预览
-    if (newHeaders.get("Content-Type")?.includes("video")) {
-        newHeaders.set("Content-Type", "video/mp4");
+    // 3. 核心修正：确保 MIME 类型与实际内容匹配
+    const contentType = newHeaders.get("Content-Type") || "";
+    // 如果 Telegraph 返回的是通用二进制类型，强制根据后缀名纠正（简单粗暴但有效）
+    if (contentType === "application/octet-stream" || contentType === "binary/octet-stream") {
+        if (response.url.endsWith(".png")) newHeaders.set("Content-Type", "image/png");
+        else if (response.url.endsWith(".jpg") || response.url.endsWith(".jpeg")) newHeaders.set("Content-Type", "image/jpeg");
+        else if (response.url.endsWith(".mp4")) newHeaders.set("Content-Type", "video/mp4");
     }
 
     return new Response(response.body, {
@@ -17,7 +21,6 @@ function makeInline(response) {
         headers: newHeaders
     });
 }
-
 export async function onRequest(context) {
     const {
         request,
