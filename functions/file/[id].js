@@ -1,3 +1,10 @@
+function makeInline(response) {
+    const newResponse = new Response(response.body, response);
+    newResponse.headers.delete("Content-Disposition");
+    newResponse.headers.set("Content-Disposition", "inline");
+    return newResponse;
+}
+
 export async function onRequest(context) {
     const {
         request,
@@ -31,7 +38,7 @@ export async function onRequest(context) {
     });
 
     // If the response is OK, proceed with further checks
-    if (!response.ok) return response;
+    if (!response.ok) return makeInline(response);
 
     // Log response details
     console.log(response.ok, response.status);
@@ -39,13 +46,13 @@ export async function onRequest(context) {
     // Allow the admin page to directly view the image
     const isAdmin = request.headers.get('Referer')?.includes(`${url.origin}/admin`);
     if (isAdmin) {
-        return response;
+        return makeInline(response);
     }
 
     // Check if KV storage is available
     if (!env.img_url) {
         console.log("KV storage not available, returning image directly");
-        return response;  // Directly return image response, terminate execution
+        return makeInline(response);  // Directly return image response, terminate execution
     }
 
     // The following code executes only if KV is available
@@ -77,7 +84,7 @@ export async function onRequest(context) {
 
     // Handle based on ListType and Label
     if (metadata.ListType === "White") {
-        return response;
+        return makeInline(response);
     } else if (metadata.ListType === "Block" || metadata.Label === "adult") {
         const referer = request.headers.get('Referer');
         const redirectUrl = referer ? "https://static-res.pages.dev/teleimage/img-block-compressed.png" : `${url.origin}/block-img.html`;
@@ -124,7 +131,7 @@ export async function onRequest(context) {
     await env.img_url.put(params.id, "", { metadata });
 
     // Return file content
-    return response;
+    return makeInline(response);
 }
 
 async function getFilePath(env, file_id) {
