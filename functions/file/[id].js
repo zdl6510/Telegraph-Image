@@ -1,8 +1,21 @@
 function makeInline(response) {
-    const newResponse = new Response(response.body, response);
-    newResponse.headers.delete("Content-Disposition");
-    newResponse.headers.set("Content-Disposition", "inline");
-    return newResponse;
+    // 创建一个新的响应副本，这允许我们修改 header
+    const newHeaders = new Headers(response.headers);
+    
+    // 强制清除并覆盖 Content-Disposition
+    newHeaders.delete("Content-Disposition");
+    newHeaders.set("Content-Disposition", "inline; filename=image");
+    
+    // 如果是视频，确保 Content-Type 正确，这有助于浏览器识别为流媒体预览
+    if (newHeaders.get("Content-Type")?.includes("video")) {
+        newHeaders.set("Content-Type", "video/mp4");
+    }
+
+    return new Response(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: newHeaders
+    });
 }
 
 export async function onRequest(context) {
